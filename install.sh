@@ -5,12 +5,12 @@
 #master=""
 # fill in host to deploy a worker / datanode
 # master="host-192-168-2-112"
-master="host-192-168-2-112"
-
+master=""
 
 cd /home/ubuntu
 
 sudo apt update -y
+# TODO: turn this back on...
 #sudo apt upgrade -y
 
 sudo apt install -y \
@@ -19,10 +19,10 @@ sudo apt install -y \
   openjdk-11-jre-headless \
   cron
 
-# Spark requires all hosts to have a hostname that other hosts can resolve. They cannot in the default setup.
+# Spark requires all hosts to have a hostname that other hosts can resolve. There is no DNS in SNIC...
 # delete the entries from hosts..
 sudo sed -i '/\[192\.168\]/d' /etc/hosts
-for i in {1..1};
+for i in {1..4};
 do
   for j in {1..255};
   do
@@ -30,7 +30,7 @@ do
   done
 done
 sudo hostname host-$(hostname -I | awk '{$1=$1};1' | sed 's/\./-/'g) ; hostname
-# It needs to be set each boot...
+# It needs to be set each boot... this doesn't seem to work anyway so we put it in the service script also...
 echo @reboot hostname host-$(hostname -I | awk '{$1=$1};1' | sed 's/\./-/'g) | sudo tee -a /etc/crontab
 
 
@@ -39,7 +39,6 @@ tar --extract --file hadoop.tgz
 mv hadoop-3.3.4 hadoop
 
 echo HADOOP_HOME=/home/ubuntu/hadoop  | sudo tee -a /etc/environment
-# TODO start hadoop namenode
 
 
 curl https://dlcdn.apache.org/spark/spark-3.2.3/spark-3.2.3-bin-hadoop3.2.tgz --output spark.tgz
@@ -56,6 +55,7 @@ spark.ui.filters      com.benblamey.spark.BasicAuthFilter
 
 
 # This is a legacy service script, since the linux distro is old...
+# TODO start hadoop namenode/datanode
 if [ "$master" = "" ];
 then
 echo '#!/bin/sh
@@ -113,7 +113,6 @@ esac
 exit $?' | sudo tee /etc/init.d/sparkdaemon
 fi
 
-
 sudo systemctl daemon-reload
 sudo chmod +x /etc/init.d/sparkdaemon
 sudo chown root:root /etc/init.d/sparkdaemon
@@ -124,8 +123,4 @@ sudo service sparkdaemon start
 #sudo systemctl status sparkdaemon.service
 
 
-#sudo shutdown -r now
 sudo shutdown -r now
-
-# python3-pip
-#echo @reboot /home/ubuntu/spark/sbin/start-master.sh | sudo tee -a /etc/crontab
